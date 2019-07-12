@@ -1,0 +1,154 @@
+	BOOL  bResults = FALSE;
+	DWORD dwBytesWritten = 0;
+	HINTERNET hSession = NULL,
+		hConnect = NULL,
+		hRequest = NULL;
+
+	//Read Picture
+	FILE *pFile;
+	long lSize;
+	char *buffer;
+	size_t result;
+
+	DWORD dwSize = 0;
+	LPSTR pszOutBuffer;
+	DWORD dwDownloaded = 0;
+	CString msg;
+	int jkjkj;
+	//need modify
+
+
+
+
+
+	pFile = fopen("d://takePicture.bmp", "rb");// findPlane.jpg output1.bmp
+
+	fseek(pFile, 0, SEEK_END);
+	lSize = ftell(pFile);
+	rewind(pFile);
+
+	buffer = (char *)malloc(sizeof(char) * lSize);
+
+	result = fread(buffer, 1, lSize, pFile);
+
+	fclose(pFile);
+
+
+	LPCWSTR host = L"southeastasia.api.cognitive.microsoft.com"; // need modify by your cognitive service region
+	hSession = WinHttpOpen(L"Cognitive Service API Test",
+		WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+		WINHTTP_NO_PROXY_NAME,
+		WINHTTP_NO_PROXY_BYPASS, 0);
+
+	// Specify an HTTP server.
+	if (hSession)
+		hConnect = WinHttpConnect(hSession, host,
+			INTERNET_DEFAULT_HTTPS_PORT, 0);
+	else
+	{
+		int err = GetLastError();
+	}
+
+
+	// Create an HTTP Request handle.
+	if (hConnect)
+		hRequest = WinHttpOpenRequest(
+			hConnect,
+			L"POST",
+			L"/customvision/v3.0/Prediction/c82af4e2-db57-43a9-921d-a2806ba466a2/detect/iterations/Iteration3/image", // change to the feature you need
+			NULL,
+			WINHTTP_NO_REFERER,
+			WINHTTP_DEFAULT_ACCEPT_TYPES,
+			WINHTTP_FLAG_SECURE);
+	else
+	{
+		DWORD err = GetLastError();
+	}
+
+	if (hRequest)
+		bResults = WinHttpAddRequestHeaders(hRequest,
+			//			L"Ocp-Apim-Subscription-Key: fd84092ce04d4c798526ad5f5db74185", //put your key here
+			L"Prediction-Key: 15b4dda05afd485b9f2cd6bd0de19d0b",
+			(ULONG)-1L,
+			WINHTTP_ADDREQ_FLAG_ADD);
+
+	if (hRequest)
+		bResults = WinHttpAddRequestHeaders(hRequest,
+			L"Content-Type: application/octet-stream",
+			(ULONG)-1L,
+			WINHTTP_ADDREQ_FLAG_ADD);
+
+
+
+	bResults = WinHttpSendRequest(hRequest,
+		WINHTTP_NO_ADDITIONAL_HEADERS,
+		0, buffer,
+		lSize, lSize, 0);
+
+
+
+	// End the request.
+	if (bResults)
+		bResults = WinHttpReceiveResponse(hRequest, NULL);
+
+	if (bResults == 0)
+	{
+		UpdateData(TRUE);
+		debug_string = "fail";
+		UpdateData(FALSE);
+	}
+
+	int kk = 12;
+
+	if (bResults)
+		do
+		{
+			// Verify available data.
+			dwSize = 0;
+			if (!WinHttpQueryDataAvailable(hRequest, &dwSize));
+			//					printf("Error %u in WinHttpQueryDataAvailable.\n",GetLastError());
+
+							// Allocate space for the buffer.
+			pszOutBuffer = new char[dwSize + 1];
+			if (!pszOutBuffer)
+			{
+				//					printf("Out of memory\n");
+				dwSize = 0;
+			}
+			else
+			{
+				// Read the Data.
+				ZeroMemory(pszOutBuffer, dwSize + 1);
+
+				if (!WinHttpReadData(hRequest, (LPVOID)pszOutBuffer, dwSize, &dwDownloaded));
+
+				else
+				{
+					if (dwSize != 0)
+					{
+						UpdateData(TRUE);
+						debug_string = (CString)pszOutBuffer;
+						UpdateData(FALSE);
+
+						str = pszOutBuffer;
+						got_it = 1;
+
+
+
+					}
+
+				}
+
+				// Free the memory allocated to the buffer.
+
+			}
+
+		} while (dwSize > 0);
+
+		// Report any errors.
+		//if (!bResults)printf("Error %d has occurred.\n", GetLastError());
+
+		// Close any open handles.
+		if (hRequest) WinHttpCloseHandle(hRequest);
+		if (hConnect) WinHttpCloseHandle(hConnect);
+		if (hSession) WinHttpCloseHandle(hSession);
